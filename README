@@ -1,0 +1,53 @@
+README for LEGO (0.1)
+Time-stamp: <2013-12-29 16:00 by Xinran Dong & Yun Hao>
+
+* INTRODUCTION
+----------------------------------------------------------------------
+
+We have developed a novel method named LEGO (functional Link Enrichment of Gene Ontology or gene sets). Incorporating a network-based gene-weighting scheme, LEGO measures the overlaps between the interesting genes and a given gene set by integrating both the gene weights and gene-gene interactions.   
+
+* HOWTO COMPILE THE SOURCE AND INSTALL	
+----------------------------------------------------------------------
+
+	You will need a Unix environment with a working C++ compiler to
+	compile the source files in src/. We recommened GCC>=4.2.
+	Besides, Perl and R are necessary for running this program.
+
+	Type
+	$ make
+	This will create a binary directory ( /bin) in the main directory.
+
+* USAGE
+----------------------------------------------------------------------
+
+In the main directory, you could type:
+	$ perl LEGO.pl
+and you will see the help message.
+
+The usage for this program: 
+
+Usage: perl LEGO.pl <network file> <geneset file> <interest file> <multi or not:1-yes,0-no(e.g:0)> <bgNE,e.g:0.25> <minimun gene set size,e.g:5> <maximum gene set size,e.g:10000> <adjusted methods,e.g:fdr> <p value cutoff,e.g:0.05> 
+
+Example1 (for single interesting gene list file): 
+	perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt 0 0.27 30 300 fdr 0.05
+Example2 (for multiple interesting gene list file): 
+	perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input_mul.txt 1 0.27 30 300 fdr 0.05
+
+Options:
+	<network file>:  the name of network file, please refer the format of demo/FC2_human.txt
+	<geneset file>:  the name of geneset file, please refer the format of demo/GeneSet_human.txt
+	<interest file>: the name of interesting gene list file, please refer the format of demo/input.txt
+	<multi>: whether the input interesting gene list file has multiple groups, if yes, the <interest file> must be the format of demo/input_mul.txt
+	<bgNE>: NE (network efficiency) for background network. 
+	<minimun gene set size>: minimum gene set size
+	<maximun gene set size>: maximum gene set size
+	<adjusted methods>: adjusted methods for p vlaue
+	<p value cutoff>: p value threshold 
+
+Tips: 
+	1. There are two output files: <interest file>_n-LEGO.final <interest file>_e-LEGO.final
+	2. The first time to run this program will take about several miniutes to generate mid-files(according to the size of the network and genesets). 
+	If you have already generated the mid-files for network and genesets, it will only take several seconds to calculate a new input gene list
+	3. The gene ID in the network, gene set and input gene list must be the same ID system.
+	4. More options are available at our online server <http://202.120.224.143:8000>. It will be available soon. 
+
