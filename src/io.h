@@ -97,6 +97,21 @@ struct GS_INFO_BG
 	double e_ES;
 	double e_ES_bg;
 };
+#define PI 3.14159265359
+double z2p(double x){
+	double b0 = 0.2316419;
+	double b1 = 0.319381530;
+	double b2 = -0.356563782;
+	double b3 = 1.781477937;
+	double b4 = -1.821255978;
+	double b5 = 1.330274429;
+	double t,pdf,cdf,p;
+	t = 1/(1+b0*x);
+	pdf = exp(-x*x/2)/sqrt(2*PI);
+	cdf = 1-pdf*(b1*t+b2*pow(t,2)+b3*pow(t,3)+b4*pow(t,4)+b5*pow(t,5));
+	p = 1-cdf;
+	return(p);
+}
 int wc_l(char *file){
 	FILE *fp;
 	char line[MAX_LINE_SIZE];
@@ -310,8 +325,8 @@ int Out_NW_CS_file(char *output_NW_file,char *output_GS_file, char *output_CS_fi
 // output results
 LEGOout_int_file(boolean *intG,int intSize,int intSize_net,int gsNum,int geneset_min, int geneset_max,char *output_ES_file,char *input_NW_file,char *input_CS_file,char *input_GS_file){
 	FILE *fp1,*fp2,*fp3,*fp4;
-	int mm,gs_ID,gene_ID,gs_size,gs_size_net;
-	double avg,sd,wei,Z_score_n,Z_score_e;
+	int i,mm,gs_ID,gene_ID,gs_size,gs_size_net,bgSize;
+	double avg,sd,wei,Z_score_n,Z_score_e,P_score_n,P_score_e;
 	boolean *use_gs;
 	struct GS_INFO *gs;
 	gs   = (struct GS_INFO *)malloc((gsNum+1)*sizeof(struct GS_INFO));
@@ -336,8 +351,15 @@ LEGOout_int_file(boolean *intG,int intSize,int intSize_net,int gsNum,int geneset
 		return -1;
 	}
 	// read in GS info file 
+	// 0	18716	17083	4353383	0	0
+	// 1	1	16	14	0.063120	3.386597
 	// e.g 1       1       52      0.137187        5.216251	
+	// 1   1015    10  4   0.003192    0.223718
+	i = 0;
 	while(fscanf(fp4,"%d\t%d\t%d\t%d\t%lf\t%lf\n",&mm,&gs_ID,&gs_size,&gs_size_net,&avg,&sd)!=EOF){
+		i++;
+		if(i==1)
+			bgSize = gs_size;
 		if(gs_size < geneset_min || gs_size > geneset_max){ // size selection
 			continue;
 		}
@@ -380,14 +402,23 @@ LEGOout_int_file(boolean *intG,int intSize,int intSize_net,int gsNum,int geneset
 	fclose(fp3);
 	printf("finish read in %s\n",input_CS_file);
 	// output
-	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tZ_score(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\n");
+	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tP_value(n-LEGO)\tZ_score(e-LEGO)\tP_value(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\n");
+	double scale_val;
 	for(gs_ID=1;gs_ID<=gsNum;gs_ID++){ // for each gs
 		if(use_gs[gs_ID]){ // use gs
 			gs[gs_ID].n_ES = gs[gs_ID].n_ES/intSize;	
-			Z_score_n = (gs[gs_ID].n_ES-gs[gs_ID].n_mean)/(gs[gs_ID].n_sd/sqrt(intSize));
+			scale_val = 1/sqrt(1-(double)intSize/(double)bgSize);
+			Z_score_n = scale_val*(gs[gs_ID].n_ES-gs[gs_ID].n_mean)/(gs[gs_ID].n_sd/sqrt(intSize));
+			P_score_n = z2p(Z_score_n);
 			gs[gs_ID].e_ES = gs[gs_ID].e_ES/intSize_net;	
-			Z_score_e = (gs[gs_ID].e_ES-gs[gs_ID].e_mean)/(gs[gs_ID].e_sd/sqrt(intSize_net));
-			fprintf(fp1,"%d\t%f\t%f\t%d\t%d\t%d\t%d\t%d\n",gs_ID,Z_score_n,Z_score_e,gs[gs_ID].size,gs[gs_ID].size_net,intSize,intSize_net,gs[gs_ID].ov);
+			scale_val = 1/sqrt(1-(double)intSize_net/(double)bgSize);
+			Z_score_e = scale_val*(gs[gs_ID].e_ES-gs[gs_ID].e_mean)/(gs[gs_ID].e_sd/sqrt(intSize_net));
+			P_score_e = z2p(Z_score_e);
+			if(P_score_n>1 || P_score_n <0)
+				P_score_n = 1;
+			if(P_score_e>1 || P_score_e <0)
+				P_score_e = 1;
+			fprintf(fp1,"%d\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\n",gs_ID,Z_score_n,P_score_n,Z_score_e,P_score_e,gs[gs_ID].size,gs[gs_ID].size_net,intSize,intSize_net,gs[gs_ID].ov);
 		}
 	}
 	fclose(fp1);
@@ -398,7 +429,7 @@ LEGOout_int_file(boolean *intG,int intSize,int intSize_net,int gsNum,int geneset
 LEGOout_int_mul_file(boolean **intG,int *intGNum,int *intGNum_net, int intNum, int gsNum,int geneset_min, int geneset_max,char *output_ES_file,char *input_NW_file,char *input_CS_file,char *input_GS_file){
 	FILE *fp1,*fp2,*fp3,*fp4;
 	int i,mm,gs_ID,gene_ID,gs_size,gs_size_net;
-	double avg,sd,wei,Z_score_n,Z_score_e;
+	double avg,sd,wei,Z_score_n,Z_score_e,P_score_n,P_score_e;
 	boolean *use_gs;
 	struct GS_INFO **gs;
 	gs  = (struct GS_INFO **)malloc((intNum+1)*sizeof(struct GS_INFO *));
@@ -427,7 +458,12 @@ LEGOout_int_mul_file(boolean **intG,int *intGNum,int *intGNum_net, int intNum, i
 	}
 	// read in GS info file 
 	// e.g 1       1       52      0.137187        5.216251	
+	int bgSize;
+	i = 0;
 	while(fscanf(fp4,"%d\t%d\t%d\t%d\t%lf\t%lf\n",&mm,&gs_ID,&gs_size,&gs_size_net,&avg,&sd)!=EOF){
+		i++;
+		if(i==1)
+			bgSize = gs_size;
 		if(gs_size < geneset_min || gs_size > geneset_max){ // size selection
 			continue;
 		}
@@ -439,8 +475,9 @@ LEGOout_int_mul_file(boolean **intG,int *intGNum,int *intGNum_net, int intNum, i
 				gs[i][gs_ID].n_mean = avg;
 				gs[i][gs_ID].n_sd = sd;
 				gs[i][gs_ID].n_ES = 0;
-				gs[i][gs_ID].ov ++;
-			}else{
+				gs[i][gs_ID].ov = 0;
+			}
+			if(mm==2){
 				gs[i][gs_ID].e_mean = avg;
 				gs[i][gs_ID].e_sd = sd;
 				gs[i][gs_ID].e_ES = 0;
@@ -476,16 +513,25 @@ LEGOout_int_mul_file(boolean **intG,int *intGNum,int *intGNum_net, int intNum, i
 	fclose(fp3);
 	printf("finish read in %s\n",input_CS_file);
 	// output
-	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tZ_score(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\tInterestingGeneListID\n");
+	double scale_val;
+	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tP_value(n-LEGO)\tZ_score(e-LEGO)\tP_value(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\tInterestingGeneListID\n");
 	for(i=1;i<=intNum;i++){
 		for(gs_ID=1;gs_ID<=gsNum;gs_ID++){ // for each gs
 			if(use_gs[gs_ID]){ // use gs
 	//			printf("%d\t%d\n",gs_ID,use_gs[gs_ID]);
 				gs[i][gs_ID].n_ES = gs[i][gs_ID].n_ES/intGNum[i];	
-				Z_score_n = (gs[i][gs_ID].n_ES-gs[i][gs_ID].n_mean)/(gs[i][gs_ID].n_sd/sqrt(intGNum[i]));
+				scale_val = 1/sqrt(1-(double)intGNum[i]/(double)bgSize);
+				Z_score_n = scale_val*(gs[i][gs_ID].n_ES-gs[i][gs_ID].n_mean)/(gs[i][gs_ID].n_sd/sqrt(intGNum[i]));
+				P_score_n = z2p(Z_score_n);
 				gs[i][gs_ID].e_ES = gs[i][gs_ID].e_ES/intGNum_net[i];	
-				Z_score_e = (gs[i][gs_ID].e_ES-gs[i][gs_ID].e_mean)/(gs[i][gs_ID].e_sd/sqrt(intGNum_net[i]));
-				fprintf(fp1,"%d\t%f\t%f\t%d\t%d\t%d\t%d\t%d\t%d\n",gs_ID,Z_score_n,Z_score_e,gs[i][gs_ID].size,gs[i][gs_ID].size_net,intGNum[i],intGNum_net[i],gs[i][gs_ID].ov,i);
+				scale_val = 1/sqrt(1-(double)intGNum_net[i]/(double)bgSize);
+				Z_score_e = scale_val*(gs[i][gs_ID].e_ES-gs[i][gs_ID].e_mean)/(gs[i][gs_ID].e_sd/sqrt(intGNum_net[i]));
+				P_score_e = z2p(Z_score_e);
+				if(P_score_n>1 || P_score_n < 0)
+					P_score_n = 1;
+				if(P_score_e>1 || P_score_e < 0)
+					P_score_e = 1;
+				fprintf(fp1,"%d\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\t%d\n",gs_ID,Z_score_n,P_score_n,Z_score_e,P_score_e,gs[i][gs_ID].size,gs[i][gs_ID].size_net,intGNum[i],intGNum_net[i],gs[i][gs_ID].ov,i);
 			}
 		}
 	}
@@ -497,7 +543,7 @@ LEGOout_int_mul_file(boolean **intG,int *intGNum,int *intGNum_net, int intNum, i
 LEGOout_int_bg_file(boolean *intG,boolean *bgG,int intSize,int intSize_net,int bgSize, int bgSize_net, int gsNum,int geneset_min, int geneset_max,char *output_ES_file,char *input_NW_file,char *input_CS_file,char *input_GS_file){
 	FILE *fp1,*fp2,*fp3,*fp4;
 	int mm,gs_ID,gene_ID,gs_size,gs_size_net;
-	double avg,sd,wei,Z_score_n,Z_score_e;
+	double avg,sd,wei,Z_score_n,Z_score_e,P_score_n,P_score_e;
 	boolean *use_gs;
 	struct GS_INFO_BG *gs;
 	gs   = (struct GS_INFO_BG *)malloc((gsNum+1)*sizeof(struct GS_INFO_BG));
@@ -574,16 +620,25 @@ LEGOout_int_bg_file(boolean *intG,boolean *bgG,int intSize,int intSize_net,int b
 	fclose(fp3);
 	printf("finish read in %s\n",input_CS_file);
 	// output
-	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tZ_score(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\n");
+	double scale_val;
+	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tP_value(n-LEGO)\tZ_score(e-LEGO)\tP_value(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\n");
 	for(gs_ID=1;gs_ID<=gsNum;gs_ID++){ // for each gs
 		if(use_gs[gs_ID]){ // use gs
 			gs[gs_ID].n_ES = gs[gs_ID].n_ES/intSize;	
 			gs[gs_ID].n_ES_bg = gs[gs_ID].n_ES_bg/bgSize;	
-			Z_score_n = (gs[gs_ID].n_ES-gs[gs_ID].n_ES_bg)/(gs[gs_ID].n_sd*sqrt(1/(double)intSize+1/(double)bgSize));
+			scale_val = 1/sqrt(1-(double)intSize/(double)bgSize);
+			Z_score_n = scale_val*(gs[gs_ID].n_ES-gs[gs_ID].n_ES_bg)/(gs[gs_ID].n_sd*sqrt(1/(double)intSize+1/(double)bgSize));
+			P_score_n = z2p(Z_score_n);
 			gs[gs_ID].e_ES = gs[gs_ID].e_ES/intSize_net;	
 			gs[gs_ID].e_ES_bg = gs[gs_ID].e_ES_bg/bgSize_net;	
-			Z_score_e = (gs[gs_ID].e_ES-gs[gs_ID].e_ES_bg)/(gs[gs_ID].e_sd*sqrt(1/(double)intSize_net+1/(double)bgSize_net));
-			fprintf(fp1,"%d\t%f\t%f\t%d\t%d\t%d/%d\t%d/%d\t%d\n",gs_ID,Z_score_n,Z_score_e,gs[gs_ID].size,gs[gs_ID].size_net,intSize,bgSize,intSize_net,bgSize_net,gs[gs_ID].ov);
+			scale_val = 1/sqrt(1-(double)intSize_net/(double)bgSize);
+			Z_score_e = scale_val*(gs[gs_ID].e_ES-gs[gs_ID].e_ES_bg)/(gs[gs_ID].e_sd*sqrt(1/(double)intSize_net+1/(double)bgSize_net));
+			P_score_e = z2p(Z_score_e);
+			if(P_score_n>1 || P_score_n < 0)
+				P_score_n = 1;
+			if(P_score_e>1 || P_score_e < 0)
+				P_score_e = 1;
+			fprintf(fp1,"%d\t%f\t%f\t%f\t%f\t%d\t%d\t%d/%d\t%d/%d\t%d\n",gs_ID,Z_score_n,P_score_n,Z_score_e,P_score_e,gs[gs_ID].size,gs[gs_ID].size_net,intSize,bgSize,intSize_net,bgSize_net,gs[gs_ID].ov);
 		}
 	}
 	fclose(fp1);
@@ -594,7 +649,7 @@ LEGOout_int_bg_file(boolean *intG,boolean *bgG,int intSize,int intSize_net,int b
 LEGOout_int_mul_bg_file(boolean **intG,boolean *bgG,int *intGNum,int *intGNum_net,int bgSize, int bgSize_net, int intNum, int gsNum,int geneset_min, int geneset_max,char *output_ES_file,char *input_NW_file,char *input_CS_file,char *input_GS_file){
 	FILE *fp1,*fp2,*fp3,*fp4;
 	int i,mm,gs_ID,gene_ID,gs_size,gs_size_net;
-	double avg,sd,wei,Z_score_n,Z_score_e;
+	double avg,sd,wei,Z_score_n,Z_score_e,P_score_n,P_score_e;
 	boolean *use_gs;
 	struct GS_INFO_BG **gs;
 	gs  = (struct GS_INFO_BG **)malloc((intNum+1)*sizeof(struct GS_INFO_BG *));
@@ -636,8 +691,9 @@ LEGOout_int_mul_bg_file(boolean **intG,boolean *bgG,int *intGNum,int *intGNum_ne
 				gs[i][gs_ID].n_sd = sd;
 				gs[i][gs_ID].n_ES = 0;
 				gs[i][gs_ID].n_ES_bg = 0;
-				gs[i][gs_ID].ov ++;
-			}else{
+				gs[i][gs_ID].ov = 0;
+			}
+			if(mm==2){
 				gs[i][gs_ID].e_mean = avg;
 				gs[i][gs_ID].e_sd = sd;
 				gs[i][gs_ID].e_ES = 0;
@@ -680,17 +736,26 @@ LEGOout_int_mul_bg_file(boolean **intG,boolean *bgG,int *intGNum,int *intGNum_ne
 	fclose(fp3);
 	printf("finish read in %s\n",input_CS_file);
 	// output
-	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tZ_score(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\tInterestingGeneListID\n");
+	double scale_val;
+	fprintf(fp1,"Gene_set\tZ_score(n-LEGO)\tP_value(n-LEGO)\tZ_score(e-LEGO)\tP_value(e-LEGO)\tgsSize\tgsSize_net\tintSize\tintSize_net\toverlapSize\tInterestingGeneListID\n");
 	for(i=1;i<=intNum;i++){
 		for(gs_ID=1;gs_ID<=gsNum;gs_ID++){ // for each gs
 			if(use_gs[gs_ID]){ // use gs
 				gs[i][gs_ID].n_ES = gs[i][gs_ID].n_ES/intGNum[i];	
 				gs[i][gs_ID].n_ES_bg = gs[i][gs_ID].n_ES_bg/bgSize;	
-				Z_score_n = (gs[i][gs_ID].n_ES-gs[i][gs_ID].n_ES_bg)/(gs[i][gs_ID].n_sd*sqrt(1/(double)intGNum[i]+1/(double)bgSize));
+				scale_val = 1/sqrt(1-(double)intGNum[i]/(double)bgSize);
+				Z_score_n = scale_val*(gs[i][gs_ID].n_ES-gs[i][gs_ID].n_ES_bg)/(gs[i][gs_ID].n_sd*sqrt(1/(double)intGNum[i]+1/(double)bgSize));
+				P_score_n = z2p(Z_score_n);
 				gs[i][gs_ID].e_ES = gs[i][gs_ID].e_ES/intGNum_net[i];	
 				gs[i][gs_ID].e_ES_bg = gs[i][gs_ID].e_ES_bg/bgSize_net;	
-				Z_score_e = (gs[i][gs_ID].e_ES-gs[i][gs_ID].e_mean)/(gs[i][gs_ID].e_sd*sqrt(1/(double)intGNum_net[i]+1/(double)bgSize_net));
-				fprintf(fp1,"%d\t%f\t%f\t%d\t%d\t%d/%d\t%d/%d\t%d\t%d\n",gs_ID,Z_score_n,Z_score_e,gs[i][gs_ID].size,gs[i][gs_ID].size_net,intGNum[i],bgSize,intGNum_net[i],bgSize_net,gs[i][gs_ID].ov,i);
+				scale_val = 1/sqrt(1-(double)intGNum_net[i]/(double)bgSize);
+				Z_score_e = scale_val*(gs[i][gs_ID].e_ES-gs[i][gs_ID].e_ES_bg)/(gs[i][gs_ID].e_sd*sqrt(1/(double)intGNum_net[i]+1/(double)bgSize_net));
+				P_score_e = z2p(Z_score_e);
+				if(P_score_n>1 || P_score_n <0)
+					P_score_n = 1;
+				if(P_score_e>1 || P_score_e < 0)
+					P_score_e = 1;
+				fprintf(fp1,"%d\t%f\t%f\t%f\t%f\t%d\t%d\t%d/%d\t%d/%d\t%d\t%d\n",gs_ID,Z_score_n,P_score_n,Z_score_e,P_score_e,gs[i][gs_ID].size,gs[i][gs_ID].size_net,intGNum[i],bgSize,intGNum_net[i],bgSize_net,gs[i][gs_ID].ov,i);
 			}
 		}
 	}
