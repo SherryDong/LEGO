@@ -19,7 +19,21 @@ open O2,">$out2" or die $!;
 $k = 1;$del=0;
 while(<I>){
 	chomp;
-	($a,$b,$w) = split " ";
+	@a = split "\t";
+	if($#a == 2){
+		($a,$b,$w) = split "\t";
+	}elsif($#a == 1){
+		($a,$b) = split "\t";
+		$w = 1;
+	}else{
+		@a = split " ";
+		if($#a == 2){
+			($a,$b,$w) = split " ";
+		}else{
+			($a,$b) = split " ";
+			$w = 1;
+		}	
+	}
 	($a,$b)=sort($a,$b);
 	$mark=$a."_".$b;
 	if($e{$mark}){

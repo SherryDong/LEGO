@@ -6,14 +6,16 @@
 # <original gene set file>_id_gs : e.g: test_data/Gene_Set_list.txt_id_gs
 
 if($#ARGV < 1){
-	print "usage: perl src/parse_gs.pl <original gene set file> <gene Id file> \n";
+	print "usage: perl src/parse_gs.pl <original gene set file> <output gene set file> <gene Id file> \n";
 	die;
 }
-$input = $ARGV[0]; ## input gene set file
-$id_f  = $ARGV[1]; ## input gene Id file
+$ori_input = $ARGV[0]; ## input gene set file
+$input = $ARGV[1]; ## input gene set file
+$id_f  = $ARGV[2]; ## input gene Id file
 $out0  = $input."_gene_id";
 $out1  = $input."_id";
 $out2  = $input."_id_gs";
+system "cp $ori_input $input";
 ##
 open ID,$id_f or die $!;
 while(<ID>){
@@ -24,7 +26,7 @@ while(<ID>){
 close ID;
 $max_id = $i;
 ##
-open I,$input or die $!;
+open I,$ori_input or die $!;
 system "cp $id_f $out0";
 open O0,">>$out0" or die $!;
 open O1,">$out1" or die $!;
@@ -40,13 +42,13 @@ while(<I>){
 		$id{$a} = $max_id;
 	}
 	if($id{$a}){
-		unless($id{$b}){
-			$id{$b} = $k;
+		unless($id_gs{$b}){
+			$id_gs{$b} = $k;
 			print O1 $b."\t".$k."\n";	
 			$k++;
 		}
 		$aa = $id{$a};
-		$bb = $id{$b};
+		$bb = $id_gs{$b};
 		print O2 $aa."\t".$bb."\n";
 	}
 }

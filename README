@@ -1,20 +1,27 @@
-README for LEGO (0.1)
-Time-stamp: <2013-12-29 16:00 by Xinran Dong & Yun Hao>
+Download link:
+http://omics.fudan.edu.cn/static/softwares/
+
+README for LEGO (V6.0)
+Time-stamp: <2015-10-13 12:00 by Xinran Dong & Yun Hao & Zhu Liu>
 
 * INTRODUCTION
 ----------------------------------------------------------------------
 
 We have developed a novel method named LEGO (functional Link Enrichment of Gene Ontology or gene sets). Incorporating a network-based gene-weighting scheme, LEGO measures the overlaps between the interesting genes and a given gene set by integrating both the gene weights and gene-gene interactions.   
 
+Please Cite:
+
+LEGO: a novel method for gene set over-representation analysis by incorporating network-based gene weights. 
+
 * HOWTO COMPILE THE SOURCE AND INSTALL	
 ----------------------------------------------------------------------
 
 	You will need a Unix environment with a working C++ compiler to
-	compile the source files in src/. We recommened GCC>=4.2.
+	compile the source files in src/. We recommend GCC>=4.2.
 	Besides, Perl and R are necessary for running this program.
 
 	Type
-	$ make
+	$ perl compile.pl
 	This will create a binary directory ( /bin) in the main directory.
 
 * USAGE
@@ -26,28 +33,78 @@ and you will see the help message.
 
 The usage for this program: 
 
-Usage: perl LEGO.pl <network file> <geneset file> <interest file> <multi or not:1-yes,0-no(e.g:0)> <bgNE,e.g:0.25> <minimun gene set size,e.g:5> <maximum gene set size,e.g:10000> <adjusted methods,e.g:fdr> <p value cutoff,e.g:0.05> 
+###############################################################################################
+	perl LEGO.pl <network file> <geneset file> <interest file> [options]
 
+	Options:  
+
+	-h/-help: show help message.
+	-pre: <whether or not to pre-run to generate mid files,1-yes,0-no(e.g:0)> 
+	-multi: <multi or not:1-yes,0-no(e.g:0)> 
+	-bgNE: <bgNE for the network,e.g:0.25> 
+	-min: <minimum gene set size,e.g:5> 
+	-max: <maximum gene set size,e.g:10000> 
+	-adj: <adjusted methods,e.g:fdr> 
+	-p_thre: <p value cutoff,e.g:0.05> 
+	-fisher: <whether or not run fisher exact test, 1-yes,0-no,e.g: 0> 
+	-filter: <whether or not run result cluster and filter step, 1-yes, 0-no, e.g: 1> 
+	-bg_file: <background file, e.g: bg.txt, if do not have background file, leave it blank>
+
+###############################################################################################
+
+And we also provide a version that do not use permutation strategy:
+
+The usage for this program:
+
+###############################################################################################
+
+perl LEGO_noperm.pl <network file> <geneset file> <interest file> [options]
+
+        Options:
+
+        -h/-help: show help message.
+        -pre: <whether or not to pre-run to generate mid files,1-yes,0-no(e.g:0)>
+        -multi: <multi or not:1-yes,0-no(e.g:0)>
+        -bgNE: <bgNE for the network,e.g:0.25>
+        -min: <minimum gene set size,e.g:5>
+        -max: <maximum gene set size,e.g:10000>
+        -adj: <adjusted methods,e.g:fdr>
+        -p_thre: <p value cutoff,e.g:0.05>
+        -fisher: <whether or not run fisher exact test, 1-yes,0-no,e.g: 0>
+        -filter: <whether or not run result cluster and filter step, 1-yes, 0-no, e.g: 0>
+        -bg_file: <background file, e.g: bg.txt, if do not have background file, leave it blank> \n";
+
+###############################################################################################
+
+	
 Example1 (for single interesting gene list file): 
-	perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt 0 0.27 30 300 fdr 0.05
+perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt 
 Example2 (for multiple interesting gene list file): 
-	perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input_mul.txt 1 0.27 30 300 fdr 0.05
+perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input_mul.txt -multi 1
+Example3 (for single interesting gene list file and filtered results): 
+perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt -filter 1 
+Example4 (for multiple interesting gene list file and filtered results): 
+perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input_mul.txt -multi 1 -filter 1
+Example5 (for single interesting gene list file + bg file): 
+perl LEGO.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt -bg_file demo/bg.txt 
 
-Options:
-	<network file>:  the name of network file, please refer the format of demo/FC2_human.txt
-	<geneset file>:  the name of geneset file, please refer the format of demo/GeneSet_human.txt
-	<interest file>: the name of interesting gene list file, please refer the format of demo/input.txt
-	<multi>: whether the input interesting gene list file has multiple groups, if yes, the <interest file> must be the format of demo/input_mul.txt
-	<bgNE>: NE (network efficiency) for background network. 
-	<minimun gene set size>: minimum gene set size
-	<maximun gene set size>: maximum gene set size
-	<adjusted methods>: adjusted methods for p vlaue
-	<p value cutoff>: p value threshold 
+Example6 (for single interesting gene list file with background list): 
+perl LEGO_noperm.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input.txt -bg_file demo/bg.txt
+Example7 (for multiple interesting gene list file with background list): 
+perl LEGO_noperm.pl demo/FC2_human.txt demo/GeneSet_human.txt demo/input_mul.txt -multi 1 -bg_file demo/bg.txt
 
 Tips: 
-	1. There are two output files: <interest file>_n-LEGO.final <interest file>_e-LEGO.final
-	2. The first time to run this program will take about several miniutes to generate mid-files(according to the size of the network and genesets). 
-	If you have already generated the mid-files for network and genesets, it will only take several seconds to calculate a new input gene list
-	3. The gene ID in the network, gene set and input gene list must be the same ID system.
-	4. More options are available at our online server <http://202.120.224.143:8000>. It will be available soon. 
+	1. Output files: <interest file>_LEGO.txt, if you choose to filter & cluster enriched gene sets, another two files will be generated: <interest file>_LEGO_filter.txt <interest file>_LEGO_filter_cluster.txt (set -filter 1)
+	2. The first time to run this program will take about several minutes to generate mid-files(according to the size of the network and genesets). If you want to re-generate the mid files, set `-pre_run to 1`; 
+	If you have already generated the mid-files for network and genesets, it will only take several seconds to calculate a new input gene list (set `-pre_run to generate mid files` to 0)
+	3. The first time to use LEGO.pl, it will take maybe several minutes to generate the permutation results. We provide the pre-generated mid files for data/GeneSet_human.txt. 
+	4. If you want to use the background file, you could only use LEGO_noperm.pl;
+	5. The gene ID in the network, gene set and input gene list must be the same ID system.
+	6. More options are available at our online server <http://lego.tianlab.cn>. It will be available soon. 
 
+## for plot
+Pre-request:
+
+	Usage: plot_LEGO.R <input interesting gene list file> <enriched output file> <output file prefix> <network file name> <network+gene set prefix,e.g: demo/GeneSet_human.txt_FC2_human> <CS or NW> <plot gene set name, can be comma saperated> 
+## e.g:
+	Rscript src/plot_LEGO.R  demo/input.txt demo/input.txt_id.out_LEGO.txt demo/input_REACTOME_KINESINS demo/FC2_human.txt demo/GeneSet_human.txt_FC2_human CS REACTOME_KINESINS 
