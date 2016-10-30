@@ -46,14 +46,17 @@ while(<ID>){
 close ID;
 ##
 ## convert Z to P and do adjustment
-open D,"/home/new/HY/Leo/LEGO_server/data/GeneSet/GeneSet_des.txt" or die $!;
-while(<D>){
-	chomp;
-	@a = split "\t";
-	if($#a < 2){next;}
-	$des{$a[0]} = $a[1]."_".$a[2];
-}
+$des_file = "$main_dir/demo/GeneSet_des.txt";
+if(-e $des_file){
+	open D,$des_file or die $!;
+	while(<D>){
+		chomp;
+		@a = split "\t";
+		if($#a < 2){next;}
+		$des{$a[0]} = $a[1]."_".$a[2];
+	}
 close D;
+}
 ##
 $tmp = "$input\_tmp".$$;
 print "Rscript $main_dir/pval_gpd.R $input $thre $met $tmp $multi $mid_prefix\n";

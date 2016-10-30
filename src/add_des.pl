@@ -1,4 +1,9 @@
 #!/usr/bin/perl -w
+
+use Cwd;
+$main_dir = $0;
+$des_file = "$main_dir/demo/GeneSet_des.txt";
+unless(-e $des_file){die;}
 open D,"/home/new/HY/Leo/LEGO_server/data/GeneSet/GeneSet_des.txt" or die $!;
 while(<D>){
 	chomp;
