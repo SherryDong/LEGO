@@ -44,7 +44,7 @@ my $c;
 my $i;
 my %recmd;
 my @tmp;
-my $main_dir = "/home/sherry/project/network/NETGO/LEGO_code_v6.0_RNA/";
+my $main_dir = cwd();
 my $src_dir = "$main_dir/src/";
 my $exec_dir = "$main_dir/bin/";
 ## options
